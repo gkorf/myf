@@ -1,0 +1,184 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xs:schema attributeFormDefault="unqualified" elementFormDefault="qualified" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:simpleType name="afm-type">
+    <xs:restriction base="xs:string">
+      <xs:pattern value="\d{9}"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="decimal-type" >
+    <xs:restriction base="xs:string">
+      <xs:maxLength value="19" />
+      <xs:pattern value="\d{1,16}(,\d{1,2})?"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="decimal-type2" >
+    <xs:restriction base="xs:string">
+      <xs:maxLength value="19" />
+      <xs:pattern value="[+-]?\d{1,15}(,\d{1,2})?"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="year-type" >
+    <xs:restriction base="xs:integer">
+      <xs:minInclusive value="1900"/>
+      <xs:maxInclusive value="2999"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="month-type" >
+    <xs:restriction base="xs:integer">
+      <xs:minInclusive value="1"/>
+      <xs:maxInclusive value="12"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="action-type">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="replace"/>
+      <xs:enumeration value="incremental"/>
+    </xs:restriction>
+  </xs:simpleType>  
+  <xs:simpleType name="note-type">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="credit"/>
+      <xs:enumeration value="normal"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="nonObl-type" >
+    <xs:restriction base="xs:integer">
+      <xs:minInclusive value="0"/>
+      <xs:maxInclusive value="1"/>
+    </xs:restriction>
+  </xs:simpleType>  
+  <xs:element name="packages">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="package" minOccurs="1" maxOccurs="1">
+          <xs:complexType>
+            <xs:all>
+              <xs:element name="revenueInvoices" minOccurs="0">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element name="invoice" maxOccurs="unbounded">
+                      <xs:complexType>
+                        <xs:all>                          
+                          <xs:element name="afm" type="afm-type" />
+                          <xs:element name="unique_id" type="xs:string" minOccurs="0"/>
+                          <xs:element name="amount" type="decimal-type" />
+                          <xs:element name="tax" type="decimal-type" />
+                          <xs:element name="note" type="note-type" />
+                          <xs:element name="date" type="xs:date" />
+                        </xs:all>
+                      </xs:complexType>
+                    </xs:element>
+                  </xs:sequence>
+                  <xs:attribute name="action" type="action-type" use="required" />
+                </xs:complexType>
+              </xs:element>
+              <xs:element name="groupedRevenues" minOccurs="0">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element name="revenue" maxOccurs="unbounded">
+                      <xs:complexType>
+                        <xs:all>
+                          <xs:element name="afm" type="afm-type" />
+                          <xs:element name="amount" type="decimal-type" />
+                          <xs:element name="tax" type="decimal-type" />
+                          <xs:element name="invoices" type="xs:positiveInteger" />
+                          <xs:element name="note" type="note-type" />
+                          <xs:element name="date" type="xs:date" minOccurs="0"/>
+                        </xs:all>
+                      </xs:complexType>
+                    </xs:element>
+                  </xs:sequence>
+                  <xs:attribute name="action" type="action-type" use="required" />
+                </xs:complexType>
+              </xs:element>
+              <xs:element name="groupedExpenses" minOccurs="0">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element name="expense" maxOccurs="unbounded">
+                      <xs:complexType>
+                        <xs:all>
+                          <xs:element name="afm" type="afm-type" />
+                          <xs:element name="amount" type="decimal-type" />
+                          <xs:element name="tax" type="decimal-type" />
+                          <xs:element name="invoices" type="xs:positiveInteger" />
+                          <xs:element name="note" type="note-type" />
+                          <xs:element name="nonObl" type="nonObl-type" />
+                          <xs:element name="date" type="xs:date" minOccurs="0"/>
+                        </xs:all>
+                      </xs:complexType>
+                    </xs:element>
+                  </xs:sequence>
+                  <xs:attribute name="action" type="action-type" use="required" />
+                </xs:complexType>
+              </xs:element>
+              <xs:element name="groupedCashRegisters" minOccurs="0">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element name="cashregister" maxOccurs="unbounded">
+                      <xs:complexType>
+                        <xs:all>
+                          <xs:element name="cashreg_id" type="xs:string" minOccurs="0"/>
+                          <xs:element name="amount" type="decimal-type2" />
+                          <xs:element name="tax" type="decimal-type2" />
+                          <xs:element name="date" type="xs:date" minOccurs="0"/>
+                        </xs:all>
+                      </xs:complexType>
+                    </xs:element>
+                  </xs:sequence>
+                  <xs:attribute name="action" type="action-type" use="required" />
+                </xs:complexType>
+              </xs:element>
+              <xs:element name="otherExpenses" minOccurs="0">
+                <xs:complexType>
+                  <xs:all>
+                    <xs:element name="amount" type="decimal-type2" />
+                    <xs:element name="tax" type="decimal-type2" />
+                    <xs:element name="date" type="xs:date" minOccurs="0"/>
+                  </xs:all>                  
+                </xs:complexType>
+              </xs:element>
+              <xs:element name="casRevenues" minOccurs="0">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element name="casRevenue" maxOccurs="unbounded">
+                      <xs:complexType>
+                        <xs:all>
+                          <xs:element name="afm" type="afm-type" />
+                          <xs:element name="amount" type="decimal-type" />
+                          <xs:element name="tax" type="decimal-type" />                          
+                          <xs:element name="note" type="note-type" />                          
+                        </xs:all>
+                      </xs:complexType>
+                    </xs:element>
+                  </xs:sequence>
+                  <xs:attribute name="action" type="action-type" use="required" />
+                </xs:complexType>
+              </xs:element>
+              <xs:element name="casExpenses" minOccurs="0">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element name="casExpense" maxOccurs="unbounded">
+                      <xs:complexType>
+                        <xs:all>
+                          <xs:element name="afm" type="afm-type" />
+                          <xs:element name="amount" type="decimal-type" />
+                          <xs:element name="tax" type="decimal-type" />
+                          <xs:element name="note" type="note-type" />                          
+                        </xs:all>
+                      </xs:complexType>
+                    </xs:element>
+                  </xs:sequence>
+                  <xs:attribute name="action" type="action-type" use="required" />
+                </xs:complexType>
+              </xs:element>
+            </xs:all>
+            <xs:attribute name="actor_afm" type="afm-type" use="required" />
+            <xs:attribute name="month" type="month-type" use="required" />
+            <xs:attribute name="year" type="year-type" use="required" />
+            <xs:attribute name="branch" type="xs:string" use="optional" />
+          </xs:complexType>
+        </xs:element>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>
