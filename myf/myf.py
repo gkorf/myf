@@ -30,7 +30,7 @@ import zipfile
 import StringIO
 
 Entry = namedtuple("Entry",
-                   ["id", "afm", "date", "amount", "fpa"])
+                   ["id", "afm", "date", "amount", "fpa_rate"])
 
 
 schema_s = b"""<?xml version="1.0" encoding="utf-8"?>
@@ -252,7 +252,8 @@ def register_invoice(revenue_invoices, entry):
     etree.SubElement(invoice, "afm").text = entry.afm
     etree.SubElement(invoice, "unique_id").text = str(entry.id)
     etree.SubElement(invoice, "amount").text = number(entry.amount)
-    etree.SubElement(invoice, "tax").text = number(entry.fpa)
+    fpa = entry.amount * entry.fpa_rate
+    etree.SubElement(invoice, "tax").text = number(fpa)
     etree.SubElement(invoice, "note").text = "normal"
     etree.SubElement(invoice, "date").text = entry.date.isoformat()
 
@@ -277,7 +278,7 @@ def record_per_afm(revenue_invoices, grouped_revenues, afm, entries):
         assert afm == entry.afm
         register_invoice(revenue_invoices, entry)
         amount_sum += entry.amount
-        fpa_sum += entry.fpa
+        fpa_sum += entry.amount * entry.fpa_rate
         ref_date = entry.date
     assert ref_date
     register_group(
@@ -346,19 +347,6 @@ def read_date(s):
         abort("Λανθασμένη ημερομηνία '%s'." % s)
 
 
-OLD_FPA_RATIO = 0.23
-FPA_RATIO = 0.24
-FPA_CHANGE_DATE = datetime.date(2016, 6, 1)
-
-
-def check_fpa(entry):
-    if entry.fpa < 1e-2:
-        return
-    ratio = FPA_RATIO if entry.date >= FPA_CHANGE_DATE else OLD_FPA_RATIO
-    if abs(entry.fpa - entry.amount * ratio) >= 1e-2:
-        abort("Λανθασμένο ΦΠΑ (αξία: %s ΦΠΑ: %s)." % (entry.amount, entry.fpa))
-
-
 def validate_afm(afm):
     try:
         stdnum.gr.vat.validate(afm)
@@ -370,7 +358,6 @@ def validate_entries(entries):
     prev = None
     for entry in entries:
         validate_afm(entry.afm)
-        check_fpa(entry)
         if prev:
             if entry.id <= prev.id:
                 abort("Εγγραφή %s εκτός σειράς." % entry.id)
@@ -390,7 +377,7 @@ def read_from_file(filename):
                           afm=row[1],
                           date=read_date(row[2]),
                           amount=float(row[3]),
-                          fpa=float(row[4]))
+                          fpa_rate=float(row[4]))
             entries.append(entry)
     return entries
 
@@ -469,10 +456,10 @@ description = """Δημιουργία και ανέβασμα καταστάσε
 και το ανέβασμά τους στο TAXIS, σε δύο διακριτά βήματα.
 
 Τα στοιχεία τιμολογίων πρέπει να είναι διαθέσιμα σε ένα αρχείο CSV
-της μορφής: <Α/Α>,<ΑΦΜ>,<ΕΕΕΕ-ΜΜ-ΗΗ>,<ΑΞΙΑ>,<ΦΠΑ>
+της μορφής: <Α/Α>,<ΑΦΜ>,<ΕΕΕΕ-ΜΜ-ΗΗ>,<ΑΞΙΑ>,<%ΦΠΑ>
 Παράδειγμα:
-  17,998765432,2017-01-30,1030.5,247.32
-  18,998765432,2017-02-21,900,216
+  17,998765432,2017-01-30,1030.5,0.24
+  18,998765432,2017-02-21,900,0.13
 
 Το αρχείο ρυθμίσεων σε μορφή JSON πρέπει να περιλαμβάνει τα εξής:
   {"afm": "το_ΑΦΜ_σου",
