@@ -449,7 +449,7 @@ def zip_file(filepath, arcname):
     z = zipfile.ZipFile(s, 'w', zipfile.ZIP_DEFLATED)
     z.write(filepath, arcname=arcname)
     z.close()
-    return s
+    return s.getvalue()
 
 
 def upload(settings, dirname):
