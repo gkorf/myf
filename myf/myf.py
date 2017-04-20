@@ -403,6 +403,44 @@ def generate(settings, csvfile, dest=None):
     print "Οι καταστάσεις ΜΥΦ αποθηκεύτηκαν στον φάκελο '%s'." % dest
 
 
+def show_list(lst):
+    return ", ".join(map(str, lst))
+
+
+def validate_quarter(entries):
+    years = set(entry.date.year for entry in entries)
+    if len(years) != 1:
+        abort("Οι καταστάσεις αναφέρονται σε διαφορετικά έτη: %s"
+              % show_list(years))
+    year = years.pop()
+    quarters = set(1 + (entry.date.month - 1) // 3 for entry in entries)
+    if len(quarters) != 1:
+        abort("Οι καταστάσεις αναφέρονται σε διαφορετικά τρίμηνα: %s"
+              % show_list(quarters))
+    quarter = quarters.pop()
+    return year, quarter
+
+
+def f2_per_fpa_rate(fpa_rate, entries):
+    sum_amount = 0
+    for entry in entries:
+        sum_amount += entry.amount
+        assert fpa_rate == entry.fpa_rate
+    fpa = fpa_rate * sum_amount
+    return sum_amount, fpa
+
+
+def f2(settings, csvfile):
+    entries = read_from_file(csvfile)
+    validate_entries(entries)
+    year, quarter = validate_quarter(entries)
+    print "Στοιχεία Φ2 για έτος: %s τρίμηνο: %s." % (year, quarter)
+    for fpa_rate, entries_per_fpa_rate in _partition_by(
+            lambda entry: entry.fpa_rate, entries).iteritems():
+        sum_amount, fpa = f2_per_fpa_rate(fpa_rate, entries_per_fpa_rate)
+        print "Κατηγορία: %s Αξία: %s ΦΠΑ: %s" % (
+            fpa_rate, number(sum_amount), number(fpa))
+
 URL = "https://www1.gsis.gr/myf/oltp/api/post/file"
 
 
@@ -480,16 +518,21 @@ def main():
     parser.add_argument(
         '--generate', metavar='CSV',
         help='Δημιουργία καταστάσεων ΜΥΦ από αρχείο CSV')
+    parser.add_argument(
+        '--f2', metavar='CSV',
+        help='Δημιουργία κατάστασης Φ2 από αρχείο CSV')
     parser.add_argument('--upload', metavar='DIR',
                         help='Ανέβασμα καταστάσεων ΜΥΦ από φάκελο')
     args = parser.parse_args()
-    if not(bool(args.generate) ^ bool(args.upload)):
-        abort("Πρέπει να διαλέξεις είτε 'generate' είτε 'upload'.")
+    if not(bool(args.generate) ^ bool(args.upload) ^ bool(args.f2)):
+        abort("Πρέπει να διαλέξεις είτε 'generate' είτε 'upload' είτε 'f2'.")
 
     settings_file = args.settings
     settings = read_settings(settings_file)
     if args.generate:
         generate(settings, args.generate)
+    if args.f2:
+        f2(settings, args.f2)
     if args.upload:
         upload(settings, args.upload)
 
