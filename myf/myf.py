@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (C) 2017 Giorgos Korfiatis <korfiatis@gmail.com>
+# Copyright (C) 2017-2018 Giorgos Korfiatis <korfiatis@gmail.com>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -452,23 +452,45 @@ def zip_file(filepath, arcname):
     return s.getvalue()
 
 
+def get_logger(f):
+    def log(msg):
+        print msg
+        msgln = msg + '\n'
+        msgln = msgln.encode('utf-8')
+        f.write(msgln)
+    return log
+
+
 def upload(settings, dirname):
     username = get_setting(settings, "username")
     password = get_setting(settings, "password")
-    for filename in os.listdir(dirname):
-        upload_file(username, password, dirname, filename)
+    log_file = os.path.join(dirname, 'upload.log')
+    if os.path.exists(log_file):
+        abort(
+            "Φαίνεται ότι τα αρχεία έχουν ήδη ανέβει. "\
+            "Αν θέλεις να τα ανεβάσεις, μετακίνησε το αρχείο '%s'." %
+            log_file)
+
+    with open(log_file, 'w') as f:
+        log = get_logger(f)
+        log("Έναρξη: %s" % datetime.datetime.now())
+        for filename in os.listdir(dirname):
+            if not filename.endswith('.xml'):
+                continue
+            upload_file(username, password, dirname, filename, log)
+        log("Λήξη: %s" % datetime.datetime.now())
 
 
-def upload_file(username, password, dirname, filename):
+def upload_file(username, password, dirname, filename, log):
     filepath = os.path.join(dirname, filename)
-    print "Ανέβασμα αρχείου: %s" % filepath
+    log("Ανέβασμα αρχείου: %s" % filepath)
     zip_filename = "%s.zip" % filename
     files = {"file": (zip_filename,
                       zip_file(filepath, filename),
                       "application/octet-stream")}
     r = requests.post(URL, files=files, auth=(username, password))
-    print "Απάντηση: %s" % r.status_code
-    print r.content
+    log("Απάντηση: %s" % r.status_code)
+    log(r.content)
 
 
 def get_setting(settings, key):
