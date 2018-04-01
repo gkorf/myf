@@ -19,7 +19,7 @@
 from __future__ import unicode_literals
 import datetime
 import argparse
-from collections import namedtuple
+from collections import namedtuple, defaultdict
 import csv
 import json
 from lxml import etree
@@ -28,6 +28,9 @@ import os
 import requests
 import zipfile
 import StringIO
+from decimal import Decimal
+
+TWOPLACES = Decimal('0.01')
 
 Entry = namedtuple("Entry",
                    ["id", "afm", "date", "amount", "fpa_rate"])
@@ -247,12 +250,16 @@ def number(n):
     return str(n).replace(".", ",")
 
 
+def mul(a, b):
+    return (a * b).quantize(TWOPLACES)
+
+
 def register_invoice(revenue_invoices, entry):
     invoice = etree.SubElement(revenue_invoices, "invoice")
     etree.SubElement(invoice, "afm").text = entry.afm
     etree.SubElement(invoice, "unique_id").text = str(entry.id)
     etree.SubElement(invoice, "amount").text = number(entry.amount)
-    fpa = entry.amount * entry.fpa_rate
+    fpa = mul(entry.amount, entry.fpa_rate)
     etree.SubElement(invoice, "tax").text = number(fpa)
     etree.SubElement(invoice, "note").text = "normal"
     etree.SubElement(invoice, "date").text = entry.date.isoformat()
@@ -271,18 +278,23 @@ def register_group(grouped_revenues, afm, amount, fpa, invoices, date):
 def record_per_afm(revenue_invoices, grouped_revenues, afm, entries):
     assert entries
     entries = sorted(entries, key=lambda e: e.date)
-    amount_sum = 0
-    fpa_sum = 0
+    sums_per_fpa = defaultdict(lambda: Decimal('0'))
     ref_date = None
     for entry in entries:
         assert afm == entry.afm
         register_invoice(revenue_invoices, entry)
-        amount_sum += entry.amount
-        fpa_sum += entry.amount * entry.fpa_rate
+        sums_per_fpa[entry.fpa_rate] += entry.amount
         ref_date = entry.date
+
+    total_sum = Decimal('0')
+    total_fpa = Decimal('0')
+    for fpa_rate, fpa_sum in sums_per_fpa.iteritems():
+        total_sum += fpa_sum
+        total_fpa += mul(fpa_sum, fpa_rate)
+
     assert ref_date
     register_group(
-        grouped_revenues, afm, amount_sum, fpa_sum, len(entries), ref_date)
+        grouped_revenues, afm, total_sum, total_fpa, len(entries), ref_date)
 
 
 def myf_filename(actor_afm, categ, year, month):
@@ -376,8 +388,8 @@ def read_from_file(filename):
             entry = Entry(id=row[0],
                           afm=row[1],
                           date=read_date(row[2]),
-                          amount=float(row[3]),
-                          fpa_rate=float(row[4]))
+                          amount=Decimal(row[3]).quantize(TWOPLACES),
+                          fpa_rate=Decimal(row[4]))
             entries.append(entry)
     return entries
 
@@ -422,11 +434,11 @@ def validate_quarter(entries):
 
 
 def f2_per_fpa_rate(fpa_rate, entries):
-    sum_amount = 0
+    sum_amount = Decimal('0')
     for entry in entries:
         sum_amount += entry.amount
         assert fpa_rate == entry.fpa_rate
-    fpa = fpa_rate * sum_amount
+    fpa = mul(fpa_rate, sum_amount)
     return sum_amount, fpa
 
 
