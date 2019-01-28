@@ -371,7 +371,7 @@ def validate_entries(entries):
     for entry in entries:
         validate_afm(entry.afm)
         if prev:
-            if entry.id <= prev.id:
+            if int(entry.id) <= int(prev.id):
                 abort("Εγγραφή %s εκτός σειράς." % entry.id)
             if entry.date < prev.date:
                 abort("Εγγραφή με ημερομηνία %s εκτός σειράς." % entry.date)
