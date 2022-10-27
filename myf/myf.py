@@ -16,7 +16,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from __future__ import unicode_literals
+
 import datetime
 import argparse
 from collections import namedtuple, defaultdict
@@ -27,7 +27,7 @@ import stdnum.gr.vat
 import os
 import requests
 import zipfile
-import StringIO
+import io
 from decimal import Decimal
 
 TWOPLACES = Decimal('0.01')
@@ -231,8 +231,8 @@ SCHEMA = load_schema(schema_s)
 
 
 def abort(s):
-    print s
-    print "Ματαιώθηκε."
+    print(s)
+    print("Ματαιώθηκε.")
     exit(1)
 
 
@@ -288,7 +288,7 @@ def record_per_afm(revenue_invoices, grouped_revenues, afm, entries):
 
     total_sum = Decimal('0')
     total_fpa = Decimal('0')
-    for fpa_rate, fpa_sum in sums_per_fpa.iteritems():
+    for fpa_rate, fpa_sum in sums_per_fpa.items():
         total_sum += fpa_sum
         total_fpa += mul(fpa_sum, fpa_rate)
 
@@ -320,7 +320,7 @@ def make_month_package(actor_afm, dest, year, month, entries):
         actor_afm, year, month, "groupedRevenues")
 
     entries_per_afm = _partition_by(lambda entry: entry.afm, entries)
-    for afm, afm_entries in entries_per_afm.iteritems():
+    for afm, afm_entries in entries_per_afm.items():
         record_per_afm(revenue_invoices, grouped_revenues, afm, afm_entries)
 
     postprocess(actor_afm, dest, year, month, invoices_doc, "INV")
@@ -337,18 +337,18 @@ def to_file(dest, filename, doc):
     filepath = os.path.join(dest, filename)
     with open(filepath, "w") as f:
         f.write(etree.tostring(doc, pretty_print=True))
-    print "Αποθήκευση %s" % filename
+    print("Αποθήκευση %s" % filename)
 
 
 def make_year_packages(actor_afm, dest, year, entries):
     for month, month_entries in _partition_by(
-            lambda entry: entry.date.month, entries).iteritems():
+            lambda entry: entry.date.month, entries).items():
         make_month_package(actor_afm, dest, year, month, month_entries)
 
 
 def create_myf(actor_afm, dest, entries):
     for year, year_entries in _partition_by(
-            lambda entry: entry.date.year, entries).iteritems():
+            lambda entry: entry.date.year, entries).items():
         make_year_packages(actor_afm, dest, year, year_entries)
 
 
@@ -395,7 +395,7 @@ def read_from_file(filename):
 
 
 def validate_xml(xmldoc):
-    print "Έλεγχος εγκυρότητας..."
+    print("Έλεγχος εγκυρότητας...")
     try:
         SCHEMA.assertValid(xmldoc)
     except Exception as e:
@@ -412,7 +412,7 @@ def generate(settings, csvfile, dest=None):
         dest = "MYF-%s" % now
     os.makedirs(dest)
     create_myf(actor_afm, dest, entries)
-    print "Οι καταστάσεις ΜΥΦ αποθηκεύτηκαν στον φάκελο '%s'." % dest
+    print("Οι καταστάσεις ΜΥΦ αποθηκεύτηκαν στον φάκελο '%s'." % dest)
 
 
 def show_list(lst):
@@ -446,18 +446,18 @@ def f2(settings, csvfile):
     entries = read_from_file(csvfile)
     validate_entries(entries)
     year, quarter = validate_quarter(entries)
-    print "Στοιχεία Φ2 για έτος: %s τρίμηνο: %s." % (year, quarter)
+    print("Στοιχεία Φ2 για έτος: %s τρίμηνο: %s." % (year, quarter))
     for fpa_rate, entries_per_fpa_rate in _partition_by(
-            lambda entry: entry.fpa_rate, entries).iteritems():
+            lambda entry: entry.fpa_rate, entries).items():
         sum_amount, fpa = f2_per_fpa_rate(fpa_rate, entries_per_fpa_rate)
-        print "Κατηγορία: %s Αξία: %s ΦΠΑ: %s" % (
-            fpa_rate, number(sum_amount), number(fpa))
+        print("Κατηγορία: %s Αξία: %s ΦΠΑ: %s" % (
+            fpa_rate, number(sum_amount), number(fpa)))
 
 URL = "https://www1.gsis.gr/myf/oltp/api/post/file"
 
 
 def zip_file(filepath, arcname):
-    s = StringIO.StringIO()
+    s = io.StringIO()
     z = zipfile.ZipFile(s, 'w', zipfile.ZIP_DEFLATED)
     z.write(filepath, arcname=arcname)
     z.close()
@@ -466,7 +466,7 @@ def zip_file(filepath, arcname):
 
 def get_logger(f):
     def log(msg):
-        print msg
+        print(msg)
         msgln = msg + '\n'
         msgln = msgln.encode('utf-8')
         f.write(msgln)
